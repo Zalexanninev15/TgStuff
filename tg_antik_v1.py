@@ -75,8 +75,32 @@ def normalize_input_link(link: str) -> str | None:
     if link and link.replace("_", "").replace("-", "").isalnum():
         return link
     else:
-        print(f"⚠️  Не удалось нормализовать: {orig}")
+        print(f"⚠️ Не удалось нормализовать: {orig}")
         return None
+
+def clean_target(target: str) -> str | None:
+    target = target.strip()
+    if not target:
+        return None
+    # Убираю URL-префиксы
+    for prefix in [
+        "https://t.me/s/",
+        "http://t.me/s/",
+        "https://t.me/",
+        "http://t.me/",
+        "https://telegram.me/",
+        "https://telegram.dog/",
+    ]:
+        if target.startswith(prefix):
+            username = target[len(prefix):]
+            # Обрезаю всё после первого слэша, вопроса и т.п.
+            username = username.split("/")[0].split("?")[0].split("#")[0].strip()
+            if username and username.replace("_", "").replace("-", "").isalnum():
+                return username
+    # Если не URL — считаю, что это уже username
+    if target.replace("_", "").replace("-", "").isalnum():
+        return target
+    return None
 
 async def get_channels_from_file() -> list[str]:
     input_path = Path("channels.txt")
@@ -90,7 +114,7 @@ async def get_channels_from_file() -> list[str]:
         if target:
             targets.append(target)
         else:
-            print(f"⚠️  Пропущена недопустимая ссылка: {line}")
+            print(f"⚠️ Пропущена недопустимая ссылка: {line}")
     return targets
 
 async def get_subscribed_channels(client) -> list[str]:
@@ -108,12 +132,12 @@ async def get_subscribed_channels(client) -> list[str]:
     print(f"✅ Найдено {len(targets)} публичных каналов в подписках")
     return targets
 
-processed = set()
+#processed = set()
 
 async def process_channel(client, target: str, f_rkn, f_num, f_ver, f_other, delay: float):
-    if target in processed:
-        return
-    processed.add(target)
+    #if target in processed:
+    #    return
+    #processed.add(target)
 
     try:
         entity = await client.get_entity(target)
@@ -122,7 +146,7 @@ async def process_channel(client, target: str, f_rkn, f_num, f_ver, f_other, del
         real_name = getattr(entity, 'title', '') or getattr(entity, 'first_name', '') or 'Без названия'
         username = getattr(entity, 'username', None)
         if not username:
-            print(f"⚠️  {real_name} — нет username, пропускаю запись")
+            print(f"⚠️ {real_name} — нет username, пропускаю запись")
             return
 
         display_name = f"{real_name} (@{username})" if username else f"{real_name} (ID: {entity.id})"
@@ -221,6 +245,7 @@ async def unsubscribe_from_channels(client, targets: set[str], delay: float):
     print(f"🗑️ Попытка отписаться от {len(targets)} каналов...")
     unsubscribed = 0
     for target in targets:
+        target = clean_target(target)
         try:
             entity = await client.get_entity(target)
             if isinstance(entity, Channel):
@@ -228,11 +253,11 @@ async def unsubscribe_from_channels(client, targets: set[str], delay: float):
                 print(f"✅ Отписался от {target}")
                 unsubscribed += 1
             else:
-                print(f"ℹ️ {target} — не канал, пропускаю")
+                print(f"ℹ️ @{target} — не канал, пропускаю")
         except UserNotParticipantError:
-            print(f"ℹ️ {target} — вы не участник, пропускаю")
+            print(f"ℹ️ @{target} — вы не участник, пропускаю")
         except Exception as e:
-            print(f"❌ Не удалось отписаться от {target}: {e}")
+            print(f"❌ Не удалось отписаться от @{target}: {e}")
         await asyncio.sleep(delay)
 
     print(f"✔️ Успешно отписались от {unsubscribed} каналов")
@@ -240,7 +265,7 @@ async def unsubscribe_from_channels(client, targets: set[str], delay: float):
 async def main():
     parser = argparse.ArgumentParser(
         prog='tg_antik',
-        description="TG AntiK v1.1c by Zalexanninev15 — Анализ и отписка от Telegram-каналов",
+        description="TG AntiK v1.1c rev. 2 by Zalexanninev15 — Анализ и отписка от Telegram-каналов",
         epilog="Примеры:\n"
                "  python tg_antik.py --list --save\n"
                "  python tg_antik.py --save --kill 0\n"
