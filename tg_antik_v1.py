@@ -38,7 +38,18 @@ VERIFIED_PATH = Path("verified.txt")
 NOT_DEFINITELY_PATH = Path("others.txt")
 
 # Регулярки (ключевые слова для поиска в описании канала)
-RKN_WORD_PATTERN = re.compile(r"\b(?:ркн|реестр(?:е|а)?|gosuslugi|перечен[ея]?|rkn|gov\.ru)\b:?", re.IGNORECASE)
+RKN_WORD_PATTERN = re.compile(
+    r"\b(?:"
+    r"ркн|"
+    r"реестр[ае]?|"
+    r"gosuslugi|"
+    r"роскомнадзор(?:а)?|"
+    r"перечен[ея]?[йя]?|"
+    r"rkn|"
+    r"gov\.ru"
+    r")\b:?",
+    re.IGNORECASE,
+)
 RKN_NUM_PATTERN = re.compile(r"№\s*[\d\w]{2,}", re.IGNORECASE)
 
 # Нормализация входных ссылок
@@ -64,7 +75,7 @@ def normalize_input_link(link: str) -> str | None:
     if link and link.replace("_", "").replace("-", "").isalnum():
         return link
     else:
-        print(f"⚠️ Не удалось нормализовать: {orig}")
+        print(f"⚠️  Не удалось нормализовать: {orig}")
         return None
 
 async def get_channels_from_file() -> list[str]:
@@ -79,7 +90,7 @@ async def get_channels_from_file() -> list[str]:
         if target:
             targets.append(target)
         else:
-            print(f"⚠️ Пропущена недопустимая ссылка: {line}")
+            print(f"⚠️  Пропущена недопустимая ссылка: {line}")
     return targets
 
 async def get_subscribed_channels(client) -> list[str]:
@@ -111,7 +122,7 @@ async def process_channel(client, target: str, f_rkn, f_num, f_ver, f_other, del
         real_name = getattr(entity, 'title', '') or getattr(entity, 'first_name', '') or 'Без названия'
         username = getattr(entity, 'username', None)
         if not username:
-            print(f"⚠️ {real_name} — нет username, пропускаю запись")
+            print(f"⚠️  {real_name} — нет username, пропускаю запись")
             return
 
         display_name = f"{real_name} (@{username})" if username else f"{real_name} (ID: {entity.id})"
@@ -229,7 +240,7 @@ async def unsubscribe_from_channels(client, targets: set[str], delay: float):
 async def main():
     parser = argparse.ArgumentParser(
         prog='tg_antik',
-        description="TG AntiK v1.1 by Zalexanninev15 — Анализ и отписка от Telegram-каналов",
+        description="TG AntiK v1.1c by Zalexanninev15 — Анализ и отписка от Telegram-каналов",
         epilog="Примеры:\n"
                "  python tg_antik.py --list --save\n"
                "  python tg_antik.py --save --kill 0\n"
