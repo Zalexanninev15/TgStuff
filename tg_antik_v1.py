@@ -146,7 +146,7 @@ async def process_channel(client, target: str, f_rkn, f_num, f_ver, f_other, del
         real_name = getattr(entity, 'title', '') or getattr(entity, 'first_name', '') or 'Без названия'
         username = getattr(entity, 'username', None)
         if not username:
-            print(f"⚠️  {real_name} — нет username, пропускаю запись")
+            print(f"⚠️  {real_name} — нет username, пропускаю")
             return
 
         display_name = f"{real_name} (@{username})" if username else f"{real_name} (ID: {entity.id})"
@@ -262,10 +262,27 @@ async def unsubscribe_from_channels(client, targets: set[str], delay: float):
 
     print(f"✔️ Успешно отписались от {unsubscribed} каналов")
 
+def deduplicate_file(path: Path):
+    if not path.is_file():
+        return
+    with open(path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+
+    seen = set()
+    unique_lines = []
+    for line in lines:
+        stripped = line.strip()
+        if stripped and stripped not in seen:
+            seen.add(stripped)
+            unique_lines.append(line)  # сохраняем оригинал с \n
+
+    with open(path, "w", encoding="utf-8") as f:
+        f.writelines(unique_lines)
+
 async def main():
     parser = argparse.ArgumentParser(
         prog='tg_antik',
-        description="TG AntiK v1.1c rev.5 by Zalexanninev15 — Анализ и отписка от Telegram-каналов",
+        description="TG AntiK v1.1c rev.6 by Zalexanninev15 — Анализ и отписка от Telegram-каналов",
         epilog="Примеры:\n"
                "  python tg_antik.py --list --save\n"
                "  python tg_antik.py --save --kill 0\n"
@@ -291,7 +308,7 @@ async def main():
     await client.start()
     print("✅ Подключение установлено!")
 
-    # Этап 1: Анализ (если нужно, иначе - используются ранее собранные результаты анализа)
+    # Этап 1: Анализ
     need_analysis = (
         args.kill is None or
         args.list or
@@ -321,6 +338,13 @@ async def main():
                  open(NOT_DEFINITELY_PATH, "a", encoding="utf-8") as f_other:
                 for target in targets:
                     await process_channel(client, target, f_rkn, f_num, f_ver, f_other, args.time)
+		
+            # Избавляюсь от дупликатов
+            deduplicate_file(RKN_PATH)
+            deduplicate_file(RKN_NUM_PATH)
+            deduplicate_file(VERIFIED_PATH)
+            deduplicate_file(NOT_DEFINITELY_PATH)
+		
         else:
             print("❌ Нет каналов для обработки")
     else:
