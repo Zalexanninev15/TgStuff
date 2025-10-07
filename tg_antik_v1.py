@@ -75,7 +75,7 @@ def normalize_input_link(link: str) -> str | None:
     if link and link.replace("_", "").replace("-", "").isalnum():
         return link
     else:
-        print(f"⚠️ Не удалось нормализовать: {orig}")
+        print(f"⚠️  Не удалось нормализовать: {orig}")
         return None
 
 def clean_target(target: str) -> str | None:
@@ -114,7 +114,7 @@ async def get_channels_from_file() -> list[str]:
         if target:
             targets.append(target)
         else:
-            print(f"⚠️ Пропущена недопустимая ссылка: {line}")
+            print(f"⚠️  Пропущена недопустимая ссылка: {line}")
     return targets
 
 async def get_subscribed_channels(client) -> list[str]:
@@ -132,12 +132,12 @@ async def get_subscribed_channels(client) -> list[str]:
     print(f"✅ Найдено {len(targets)} публичных каналов в подписках")
     return targets
 
-#processed = set()
+processed = set()
 
 async def process_channel(client, target: str, f_rkn, f_num, f_ver, f_other, delay: float):
-    #if target in processed:
-    #    return
-    #processed.add(target)
+    if target in processed:
+        return
+    processed.add(target)
 
     try:
         entity = await client.get_entity(target)
@@ -146,7 +146,7 @@ async def process_channel(client, target: str, f_rkn, f_num, f_ver, f_other, del
         real_name = getattr(entity, 'title', '') or getattr(entity, 'first_name', '') or 'Без названия'
         username = getattr(entity, 'username', None)
         if not username:
-            print(f"⚠️ {real_name} — нет username, пропускаю запись")
+            print(f"⚠️  {real_name} — нет username, пропускаю запись")
             return
 
         display_name = f"{real_name} (@{username})" if username else f"{real_name} (ID: {entity.id})"
@@ -265,7 +265,7 @@ async def unsubscribe_from_channels(client, targets: set[str], delay: float):
 async def main():
     parser = argparse.ArgumentParser(
         prog='tg_antik',
-        description="TG AntiK v1.1c rev. 2 by Zalexanninev15 — Анализ и отписка от Telegram-каналов",
+        description="TG AntiK v1.1c rev.3 by Zalexanninev15 — Анализ и отписка от Telegram-каналов",
         epilog="Примеры:\n"
                "  python tg_antik.py --list --save\n"
                "  python tg_antik.py --save --kill 0\n"
