@@ -1,21 +1,24 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import argparse
 import asyncio
 import re
-import argparse
 from pathlib import Path
 
 import python_socks
-from telethon import TelegramClient, functions, errors
-from telethon.tl.types import Channel, Chat, User
+from telethon import TelegramClient, functions
 from telethon.errors import (
     ChannelPrivateError,
     InviteHashInvalidError,
     InviteHashExpiredError,
-    UserNotParticipantError
+    UserNotParticipantError, FloodWaitError
 )
+from telethon.tl.types import Channel, Chat
 
 # -------------------------------------------------
 # 🔑 ЗАПОЛНИТЕ СВОИ ДАННЫЕ
-API_ID = 3928392989         # ← замените на ваш api_id (число)
+API_ID = 492849829489          # ← замените на свой api_id (число)
 API_HASH = ""  # ← ваш api_hash (строка)
 SESSION_NAME = "session"
 
@@ -35,10 +38,11 @@ proxy=None # Лучше использовать прокси. Пример ук
 RKN_PATH = Path("rkn.txt")
 RKN_NUM_PATH = Path("rkn_num.txt")
 VERIFIED_PATH = Path("verified.txt")
+NOT_DEFINITELY_PATH = Path("others.txt")
 
-# Регулярки (ключевые слова для поиска в описании канала)
-RKN_WORD_PATTERN = re.compile(r"\b(?:ркн|реестр(?:е|а)?|gosuslugi|перечень|rkn|gov\.ru)\b", re.IGNORECASE) # Реестр
-RKN_NUM_PATTERN = re.compile(r"№\s*[\d\w]{2,}", re.IGNORECASE) # №
+# Регулярки
+RKN_WORD_PATTERN = re.compile(r"\b(?:ркн|реестр(?:е|а)?|gosuslugi|перечен[ея]?|rkn|gov\.ru)\b:?", re.IGNORECASE)
+RKN_NUM_PATTERN = re.compile(r"№\s*[\d\w]{2,}", re.IGNORECASE)
 
 # Нормализация входных ссылок
 def normalize_input_link(link: str) -> str | None:
@@ -50,7 +54,7 @@ def normalize_input_link(link: str) -> str | None:
         if link.startswith("+"):
             return f"https://t.me/{link}"
         return link
-    # Извлечение username
+    # Извлекаю username
     orig = link
     if link.startswith(("https://", "http://")):
         link = link.split("://", 1)[1]
@@ -91,26 +95,35 @@ async def get_subscribed_channels(client) -> list[str]:
             targets.append(ent.username)
         elif isinstance(ent, Channel):
             # Канал без username — используем ID (но get_entity не примет ID напрямую из списка)
-            # Поэтому пропускаем — обработка только по username или invite-ссылке
+            # Поэтому пропускаю — обработка только по username или invite-ссылке
             pass
     print(f"✅ Найдено {len(targets)} публичных каналов в подписках")
     return targets
 
-async def process_channel(client, target: str, f_rkn, f_num, f_ver, delay: float):
+processed = set()
+
+async def process_channel(client, target: str, f_rkn, f_num, f_ver, f_other, delay: float):
+    if target in processed:
+        return
+    processed.add(target)
+
     try:
         entity = await client.get_entity(target)
 
         # Отображаемое имя
         real_name = getattr(entity, 'title', '') or getattr(entity, 'first_name', '') or 'Без названия'
         username = getattr(entity, 'username', None)
+        if not username:
+            print(f"⚠️ {real_name} — нет username, пропускаю запись")
+            return
+
         display_name = f"{real_name} (@{username})" if username else f"{real_name} (ID: {entity.id})"
 
         is_channel = isinstance(entity, Channel)
         is_chat = isinstance(entity, Chat)
-        is_user = isinstance(entity, User)
 
         if not (is_channel or is_chat):
-            print(f"ℹ️ {display_name} — не канал и не чат, пропускаем")
+            print(f"ℹ️ {display_name} — не канал и не чат, пропускаю")
             return
 
         is_verified = False
@@ -132,27 +145,25 @@ async def process_channel(client, target: str, f_rkn, f_num, f_ver, delay: float
 
         # title = real_name or ""
 
-        has_rkn_word =bool(RKN_WORD_PATTERN.search(description))
+        has_rkn_word =bool(RKN_WORD_PATTERN.search(description.lower()))
         has_rkn_num = bool(RKN_NUM_PATTERN.search(description))
 
         channel_type = 0
 
-        # Запись в нужные файлы
         if has_rkn_word and username:
-            f_rkn.write(f"{username}\n")
+            f_rkn.write(f"https://t.me/s/{username}\n")
             channel_type |= 1
 
         if has_rkn_num and username:
-            f_num.write(f"{username}\n")
+            f_num.write(f"https://t.me/s/{username}\n")
             channel_type |= 2
 
         if is_verified and username:
-            f_ver.write(f"{username}\n")
+            f_ver.write(f"https://t.me/s/{username}\n")
             channel_type |= 4
 
         printed = False
 
-        # Только для лога
         match channel_type:
             case 3:
                 print(f"🔴🟠 {display_name} → Реестр + №")
@@ -168,6 +179,8 @@ async def process_channel(client, target: str, f_rkn, f_num, f_ver, delay: float
                 printed = True
             case 0:
                 print(f"⚪ {display_name} — не в категориях (требуется ручная проверка на A+)")
+                if username:
+                    f_other.write(f"https://t.me/s/{username}\n")
                 printed = True
 
         if not printed:
@@ -180,8 +193,15 @@ async def process_channel(client, target: str, f_rkn, f_num, f_ver, delay: float
 
         await asyncio.sleep(delay)
 
+
+    except FloodWaitError as e:
+        print(f"⏳ Flood wait! Ждём {e.seconds} секунд...")
+        await asyncio.sleep(e.seconds)
+        return
+
     except (InviteHashInvalidError, InviteHashExpiredError, ChannelPrivateError):
         print(f"🔒 Недоступен (приватный/истёк): {target}")
+
     except Exception as exc:
         print(f"❗ Ошибка при обработке {target}: {exc}")
 
@@ -200,9 +220,9 @@ async def unsubscribe_from_channels(client, targets: set[str], delay: float):
                 print(f"✅ Отписался от {target}")
                 unsubscribed += 1
             else:
-                print(f"ℹ️ {target} — не канал, пропускаем")
+                print(f"ℹ️ {target} — не канал, пропускаю")
         except UserNotParticipantError:
-            print(f"ℹ️ {target} — вы не участник, пропускаем")
+            print(f"ℹ️ {target} — вы не участник, пропускаю")
         except Exception as e:
             print(f"❌ Не удалось отписаться от {target}: {e}")
         await asyncio.sleep(delay)
@@ -212,7 +232,7 @@ async def unsubscribe_from_channels(client, targets: set[str], delay: float):
 async def main():
     parser = argparse.ArgumentParser(
         prog='tg_antik',
-        description="TG AntiK v1.0 rev.3.1 by Zalexanninev15 — Анализ и отписка от Telegram-каналов",
+        description="TG AntiK v1.1 [BETA] by Zalexanninev15 — Анализ и отписка от Telegram-каналов",
         epilog="Примеры:\n"
                "  python tg_antik.py --list --save\n"
                "  python tg_antik.py --save --kill 0\n"
@@ -230,20 +250,19 @@ async def main():
                              '  1 — только RKN (слова)\n'
                              '  2 — только Verified\n'
                              '  3 — только № (rkn_num.txt)')
-    parser.add_argument('--time', type=float, default=1.0,
-                        help='Задержка между запросами (по умолчанию: 1.0)')
+    parser.add_argument('--time', type=float, default=2.0,
+                        help='Задержка между запросами (по умолчанию: 2.0)')
     args = parser.parse_args()
 
     client = TelegramClient(SESSION_NAME, API_ID, API_HASH, proxy=proxy)
-
     await client.start()
-    print("✅ Подключение установлено!")
+    print("✅ Подключено к Telegram")
 
     # Этап 1: Анализ (если нужно, иначе - используются ранее собранные результаты анализа)
     need_analysis = (
         args.kill is None or
         args.list or
-        not (RKN_PATH.exists() or RKN_NUM_PATH.exists() or VERIFIED_PATH.exists())
+        not (RKN_PATH.exists() or RKN_NUM_PATH.exists() or VERIFIED_PATH.exists() or NOT_DEFINITELY_PATH.exists())
     )
 
     if need_analysis:
@@ -251,10 +270,12 @@ async def main():
             RKN_PATH.write_text("", encoding="utf-8")
             RKN_NUM_PATH.write_text("", encoding="utf-8")
             VERIFIED_PATH.write_text("", encoding="utf-8")
+            NOT_DEFINITELY_PATH.write_text("", encoding="utf-8")
 
         if args.list:
             print("📂 Режим: чтение из channels.txt")
             targets = await get_channels_from_file()
+            targets = list(dict.fromkeys(targets))
         else:
             print("📬 Режим: анализ подписок")
             targets = await get_subscribed_channels(client)
@@ -263,9 +284,10 @@ async def main():
             print(f"🔎 Обработка {len(targets)} каналов...")
             with open(RKN_PATH, "a", encoding="utf-8") as f_rkn, \
                  open(RKN_NUM_PATH, "a", encoding="utf-8") as f_num, \
-                 open(VERIFIED_PATH, "a", encoding="utf-8") as f_ver:
+                 open(VERIFIED_PATH, "a", encoding="utf-8") as f_ver, \
+                 open(NOT_DEFINITELY_PATH, "a", encoding="utf-8") as f_other:
                 for target in targets:
-                    await process_channel(client, target, f_rkn, f_num, f_ver, args.time)
+                    await process_channel(client, target, f_rkn, f_num, f_ver, f_other, args.time)
         else:
             print("❌ Нет каналов для обработки")
     else:
