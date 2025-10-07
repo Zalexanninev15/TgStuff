@@ -37,7 +37,7 @@ RKN_NUM_PATH = Path("rkn_num.txt")
 VERIFIED_PATH = Path("verified.txt")
 
 # Регулярки (ключевые слова для поиска в описании канала)
-RKN_WORD_PATTERN = re.compile(r"\b(ркн|реестр|gosuslugi|в перечень|gov\.ru)\b", re.IGNORECASE) # Реестр
+RKN_WORD_PATTERN = re.compile(r"\b(?:ркн|реестр(?:е|а)?|gosuslugi|перечень|rkn|gov\.ru)\b", re.IGNORECASE) # Реестр
 RKN_NUM_PATTERN = re.compile(r"№\s*[\d\w]{2,}", re.IGNORECASE) # №
 
 # Нормализация входных ссылок
@@ -212,7 +212,7 @@ async def unsubscribe_from_channels(client, targets: set[str], delay: float):
 async def main():
     parser = argparse.ArgumentParser(
         prog='tg_antik',
-        description="TG AntiK v1.0 rev.3 by Zalexanninev15 — Анализ и отписка от Telegram-каналов",
+        description="TG AntiK v1.0 rev.3.1 by Zalexanninev15 — Анализ и отписка от Telegram-каналов",
         epilog="Примеры:\n"
                "  python tg_antik.py --list --save\n"
                "  python tg_antik.py --save --kill 0\n"
