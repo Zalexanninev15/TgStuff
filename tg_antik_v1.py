@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 import argparse
 import asyncio
 import re
@@ -40,7 +37,7 @@ RKN_NUM_PATH = Path("rkn_num.txt")
 VERIFIED_PATH = Path("verified.txt")
 NOT_DEFINITELY_PATH = Path("others.txt")
 
-# Регулярки
+# Регулярки (ключевые слова для поиска в описании канала)
 RKN_WORD_PATTERN = re.compile(r"\b(?:ркн|реестр(?:е|а)?|gosuslugi|перечен[ея]?|rkn|gov\.ru)\b:?", re.IGNORECASE)
 RKN_NUM_PATTERN = re.compile(r"№\s*[\d\w]{2,}", re.IGNORECASE)
 
@@ -232,7 +229,7 @@ async def unsubscribe_from_channels(client, targets: set[str], delay: float):
 async def main():
     parser = argparse.ArgumentParser(
         prog='tg_antik',
-        description="TG AntiK v1.1 [BETA] by Zalexanninev15 — Анализ и отписка от Telegram-каналов",
+        description="TG AntiK v1.1 by Zalexanninev15 — Анализ и отписка от Telegram-каналов",
         epilog="Примеры:\n"
                "  python tg_antik.py --list --save\n"
                "  python tg_antik.py --save --kill 0\n"
@@ -256,7 +253,7 @@ async def main():
 
     client = TelegramClient(SESSION_NAME, API_ID, API_HASH, proxy=proxy)
     await client.start()
-    print("✅ Подключено к Telegram")
+    print("✅ Подключение установлено!")
 
     # Этап 1: Анализ (если нужно, иначе - используются ранее собранные результаты анализа)
     need_analysis = (
