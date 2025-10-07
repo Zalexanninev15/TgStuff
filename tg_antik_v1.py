@@ -239,7 +239,7 @@ async def main():
     await client.start()
     print("✅ Подключение установлено!")
 
-    # Этап 1: Анализ (если нужно)
+    # Этап 1: Анализ (если нужно, иначе - используются ранее собранные результаты анализа)
     need_analysis = (
         args.kill is None or
         args.list or
