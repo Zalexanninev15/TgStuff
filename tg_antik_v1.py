@@ -198,16 +198,16 @@ async def process_channel(client, target: str, f_rkn, f_num, f_ver, f_other, del
 
         match channel_type:
             case 3:
-                print(f"🔴🟠 {display_name} → Реестр + №")
+                print(f"🔴🟠 {display_name} → Реестр + № (тоже Реестр)")
                 printed = True
             case 5:
                 print(f"🔴🔵 {display_name} → Реестр + Верифицирован")
                 printed = True
             case 6:
-                print(f"🟠🔵 {display_name} → № + Верифицирован")
+                print(f"🟠🔵 {display_name} → № (тоже Реестр) + Верифицирован")
                 printed = True
             case 7:
-                print(f"🔴🟠🔵 {display_name} → Реестр + № + Верифицирован")
+                print(f"🔴🟠🔵 {display_name} → Реестр + № (тоже Реестр) + Верифицирован")
                 printed = True
             case 0:
                 print(f"⚪ {display_name} — не в категориях (требуется ручная проверка на A+)")
@@ -219,7 +219,7 @@ async def process_channel(client, target: str, f_rkn, f_num, f_ver, f_other, del
             if channel_type & 1:
                 print(f"🔴 {display_name} → Реестр")
             if channel_type & 2:
-                print(f"🟠 {display_name} → №")
+                print(f"🟠 {display_name} → № (тоже Реестр)")
             if channel_type & 4:
                 print(f"🔵 {display_name} → Верифицирован")
 
@@ -265,7 +265,7 @@ async def unsubscribe_from_channels(client, targets: set[str], delay: float):
 async def main():
     parser = argparse.ArgumentParser(
         prog='tg_antik',
-        description="TG AntiK v1.1c rev.4 by Zalexanninev15 — Анализ и отписка от Telegram-каналов",
+        description="TG AntiK v1.1c rev.5 by Zalexanninev15 — Анализ и отписка от Telegram-каналов",
         epilog="Примеры:\n"
                "  python tg_antik.py --list --save\n"
                "  python tg_antik.py --save --kill 0\n"
