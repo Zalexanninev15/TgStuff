@@ -155,7 +155,7 @@ async def process_channel(client, target: str, f_rkn, f_num, f_ver, f_other, del
         is_chat = isinstance(entity, Chat)
 
         if not (is_channel or is_chat):
-            print(f"ℹ️ {display_name} — не канал и не чат, пропускаю")
+            print(f"ℹ️  {display_name} — не канал и не чат, пропускаю")
             return
 
         is_verified = False
@@ -242,7 +242,7 @@ async def unsubscribe_from_channels(client, targets: set[str], delay: float):
         print("📭 Нет каналов для отписки")
         return
 
-    print(f"🗑️ Попытка отписаться от {len(targets)} каналов...")
+    print(f"🗑️  Попытка отписаться от {len(targets)} каналов...")
     unsubscribed = 0
     for target in targets:
         target = clean_target(target)
@@ -253,9 +253,9 @@ async def unsubscribe_from_channels(client, targets: set[str], delay: float):
                 print(f"✅ Отписался от {target}")
                 unsubscribed += 1
             else:
-                print(f"ℹ️ @{target} — не канал, пропускаю")
+                print(f"ℹ️  @{target} — не канал, пропускаю")
         except UserNotParticipantError:
-            print(f"ℹ️ @{target} — вы не участник, пропускаю")
+            print(f"ℹ️  @{target} — вы не участник, пропускаю")
         except Exception as e:
             print(f"❌ Не удалось отписаться от @{target}: {e}")
         await asyncio.sleep(delay)
@@ -265,7 +265,7 @@ async def unsubscribe_from_channels(client, targets: set[str], delay: float):
 async def main():
     parser = argparse.ArgumentParser(
         prog='tg_antik',
-        description="TG AntiK v1.1c rev.3 by Zalexanninev15 — Анализ и отписка от Telegram-каналов",
+        description="TG AntiK v1.1c rev.4 by Zalexanninev15 — Анализ и отписка от Telegram-каналов",
         epilog="Примеры:\n"
                "  python tg_antik.py --list --save\n"
                "  python tg_antik.py --save --kill 0\n"
@@ -279,10 +279,10 @@ async def main():
                         help='Дописывать в файлы, не очищая их (файлы создаются при необходимости)')
     parser.add_argument('--kill', type=int, choices=[0, 1, 2, 3],
                         help='Отписаться после анализа:\n'
-                             '  0 — всё (RKN + Verified + №)\n'
-                             '  1 — только RKN (слова)\n'
-                             '  2 — только Verified\n'
-                             '  3 — только № (rkn_num.txt)')
+                             '  0 — всё (Реестр + Верифицирован + №)\n'
+                             '  1 — только Реестр\n'
+                             '  2 — только Верифицирован\n'
+                             '  3 — только № (тоже Реестр)')
     parser.add_argument('--time', type=float, default=2.0,
                         help='Задержка между запросами (по умолчанию: 2.0)')
     args = parser.parse_args()
